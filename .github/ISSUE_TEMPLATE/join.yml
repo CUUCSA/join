@@ -1,0 +1,63 @@
+name: Join CUUCSA on GitHub
+description: Request to become a member of the CUUCSA GitHub organization.
+title: "Join request: "
+labels: ["join-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Welcome! Fill in this short form to join the **Cavendish University Uganda Computing Students' Association** on GitHub.
+
+        Your invitation goes to the GitHub account you are signed in with right now, so make sure it is your own account.
+
+        ⚠️ This request is **public**. Do not enter your student ID, phone number or any other private details.
+
+  - type: input
+    id: full-name
+    attributes:
+      label: Full name
+      placeholder: e.g. EGABO AARON
+    validations:
+      required: true
+
+  - type: dropdown
+    id: programme
+    attributes:
+      label: Programme
+      options:
+        - BSc Software Engineering
+        - BSc Computer Science
+        - BSc Information Technology
+        - BSc Data Science and Artificial Intelligence
+        - Diploma in Computer Science
+        - Diploma in Information Technology
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: year
+    attributes:
+      label: Year of study
+      options:
+        - Year 1
+        - Year 2
+        - Year 3
+        - Year 4
+        - Alumni
+    validations:
+      required: true
+
+  - type: textarea
+    id: interests
+    attributes:
+      label: What would you like to work on? (optional)
+      placeholder: Web development, mobile apps, AI, cybersecurity, open source...
+
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: Agreement
+      options:
+        - label: I am a Cavendish University Uganda student or alumnus, and I will follow the CUUCSA code of conduct.
+          required: true
