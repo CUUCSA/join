@@ -1,0 +1,107 @@
+name: Membership requests
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  acknowledge:
+    if: >-
+      github.event.action == 'opened' &&
+      contains(github.event.issue.labels.*.name, 'join-request')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Thank the applicant
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const user = context.payload.issue.user.login;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                `Thanks for applying, @${user}! 👋`,
+                ``,
+                `A CUUCSA executive will review your request soon. Once it is approved, you will get an invitation by email and in your GitHub notifications.`,
+                `You can also accept it at https://github.com/orgs/${context.repo.owner}/invitation`
+              ].join('\n')
+            });
+
+  invite:
+    if: >-
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'approved' &&
+      contains(github.event.issue.labels.*.name, 'join-request')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invite to the organization and members team
+        id: invite
+        uses: actions/github-script@v7
+        env:
+          TEAM_SLUG: members
+        with:
+          github-token: ${{ secrets.ORG_ADMIN_TOKEN }}
+          script: |
+            const org = context.repo.owner;
+            const username = context.payload.issue.user.login;
+            const team_slug = process.env.TEAM_SLUG;
+
+            let state = 'none';
+            try {
+              const { data } = await github.rest.orgs.getMembershipForUser({ org, username });
+              state = data.state; // 'active' or 'pending'
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            if (state === 'active') {
+              core.setOutput('result', 'already');
+              return;
+            }
+
+            // Adding a non-member to a team also sends them an organization invitation.
+            await github.rest.teams.addOrUpdateMembershipForUserInOrg({
+              org,
+              team_slug,
+              username,
+              role: 'member'
+            });
+            core.setOutput('result', 'invited');
+
+      - name: Reply and close the request
+        uses: actions/github-script@v7
+        env:
+          RESULT: ${{ steps.invite.outputs.result }}
+        with:
+          script: |
+            const org = context.repo.owner;
+            const user = context.payload.issue.user.login;
+            const body = process.env.RESULT === 'already'
+              ? `@${user}, you are already a member of ${org}. Welcome back! 🎉`
+              : [
+                  `You're approved, @${user}! 🎉`,
+                  ``,
+                  `Your invitation has been sent. Accept it here within 7 days:`,
+                  `https://github.com/orgs/${org}/invitation`,
+                  ``,
+                  `Welcome to CUUCSA!`
+                ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: org,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+            await github.rest.issues.update({
+              owner: org,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              state_reason: 'completed'
+            });
